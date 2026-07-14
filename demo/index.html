@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2025 招聘就业大数据分析平台 · 18 项标准指标演示</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- 顶部加载失败提示（无网络时） -->
+  <div id="fatalBanner" class="fatal-banner" hidden>
+    ⚠ 无法加载 ECharts 资源，请确认网络连接（演示页需联网加载图表库与中国地图）。
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">✈</div>
+      <div class="brand-text">
+        <h1>2025 招聘就业大数据分析平台</h1>
+        <p class="sub">18 项标准指标效果演示 · <span class="tag-mock">模拟数据占位</span></p>
+      </div>
+    </div>
+    <div class="stat-strip" id="statStrip" aria-label="关键指标概览"></div>
+  </header>
+
+  <nav class="filterbar" id="filterBar" aria-label="板块筛选">
+    <button class="filter-btn active" data-board="all">全部 <span class="cnt">18</span></button>
+    <button class="filter-btn" data-board="geo">地域 <span class="cnt">6</span></button>
+    <button class="filter-btn" data-board="talent">人才 <span class="cnt">5</span></button>
+    <button class="filter-btn" data-board="industry">行业 <span class="cnt">3</span></button>
+    <button class="filter-btn" data-board="time">时间 <span class="cnt">1</span></button>
+    <button class="filter-btn" data-board="text">文本 <span class="cnt">3</span></button>
+  </nav>
+
+  <!-- 地域分布 · 中国地图总览 -->
+  <section class="hero map-hero" id="mapHero" aria-label="地域分布地图总览">
+    <div class="hero-head">
+      <div>
+        <h2>地域分布总览</h2>
+        <p class="hero-sub">省级行政区招聘需求 / 薪资 / 学历门槛 / 经验要求</p>
+      </div>
+      <div class="metric-switch" id="mapSwitch" role="tablist" aria-label="地图指标切换">
+        <button class="ms-btn active" data-mapmetric="jobCount" role="tab">招聘需求</button>
+        <button class="ms-btn" data-mapmetric="avgSalary" role="tab">平均薪资</button>
+        <button class="ms-btn" data-mapmetric="eduRatio" role="tab">学历门槛</button>
+        <button class="ms-btn" data-mapmetric="expRatio" role="tab">经验要求</button>
+      </div>
+    </div>
+    <div id="chinaMap" class="map-canvas" role="img" aria-label="中国省级招聘分布地图"></div>
+    <div class="map-hint">悬停查看省份明细 · 点击省份下钻城市数据</div>
+  </section>
+
+  <!-- 18 指标卡片网格 -->
+  <main class="grid" id="cardGrid" aria-label="指标卡片"></main>
+
+  <footer class="foot">
+    <span>配置驱动 · Vue3 + ECharts 架构演示</span>
+    <span>数据更新时间：<span id="footTime">—</span></span>
+  </footer>
+
+ 
+
+  <!-- 图表库（运行时从 CDN 加载） -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <script src="mock-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
