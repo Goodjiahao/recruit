@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Node / 前端 ###
+frontend/node_modules/
+frontend/dist/
+# 注意：frontend/public/geo/*.json 是运行时依赖的本地固化地理资源，必须随仓库上传，请勿忽略
+

@@ -12,7 +12,7 @@
     <artifactId>recruit</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>recruit</name>
-    <description>recruit</description>
+    <description>招聘就业大数据分析平台 - 后端数据服务</description>
     <url/>
     <licenses>
         <license/>
@@ -33,6 +33,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+
+        <!-- 数据访问：JdbcTemplate（Boot 4 Initializr 中 MyBatis 暂不可选，改用 JdbcTemplate，功能等价） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
         </dependency>
 
         <dependency>

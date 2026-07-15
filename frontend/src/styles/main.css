@@ -1,0 +1,184 @@
+/* =========================================================================
+ * 2025 招聘就业大数据分析平台 — 科幻赛博风全局主题
+ * 色系：深空底色 + 霓虹青/品红/金 + 玻璃拟态 + 扫描线纹理
+ * ========================================================================= */
+
+:root {
+  /* ---- 底色层 ---- */
+  --bg-deep:       #050a14;
+  --bg:            #0a0f1e;
+  --bg-soft:       #0d1526;
+  --panel:         rgba(13, 22, 45, 0.82);
+  --panel-solid:   #0d162e;
+  --panel-2:       #111d38;
+  --line:          rgba(56, 180, 252, 0.12);
+  --line-bright:   rgba(56, 180, 252, 0.3);
+
+  /* ---- 文字 ---- */
+  --text:          #e0ecff;
+  --text-dim:      #7b8fb8;
+  --text-accent:   #00e5ff;
+
+  /* ---- 霓虹强调色 ---- */
+  --cyan:          #00e5ff;
+  --cyan-glow:     rgba(0, 229, 255, 0.45);
+  --blue:          #3b82f6;
+  --purple:        #a855f7;
+  --magenta:       #f472b6;
+  --gold:          #fbbf24;
+  --green:         #22d3ee;
+  --red:           #f87171;
+  --good:          #34d399;
+
+  /* ---- 渐变 ---- */
+  --grad-cyan:     linear-gradient(135deg, #00e5ff 0%, #3b82f6 100%);
+  --grad-magenta:  linear-gradient(135deg, #f472b6 0%, #a855f7 100%);
+  --grad-gold:     linear-gradient(135deg, #fbbf24 0%, #f97316 100%);
+  --grad-panel:    linear-gradient(180deg, rgba(13,22,45,0.95) 0%, rgba(17,29,56,0.88) 100%);
+
+  /* ---- 阴影/光效 ---- */
+  --glow-cyan:     0 0 20px rgba(0, 229, 255, 0.15), 0 0 60px rgba(0, 229, 255, 0.06);
+  --glow-strong:   0 0 30px rgba(0, 229, 255, 0.25), 0 0 80px rgba(0, 229, 255, 0.1);
+  --shadow-card:   0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  /* ---- 字体 ---- */
+  --font-display:  "Orbitron", "Rajdhani", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-body:     "Rajdhani", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono:     "JetBrains Mono", "Fira Code", "Consolas", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  margin: 0; padding: 0;
+  height: 100%;
+  background: var(--bg-deep);
+  color: var(--text);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+}
+
+/* ---- 深空背景 + 扫描线 ---- */
+body {
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    /* 径向渐变光晕 — 左上青 */
+    radial-gradient(800px 500px at 10% -5%, rgba(0, 150, 255, 0.08) 0%, transparent 60%),
+    /* 径向渐变光晕 — 右下品红 */
+    radial-gradient(600px 400px at 95% 105%, rgba(168, 85, 247, 0.07) 0%, transparent 60%),
+    /* 细网格 */
+    repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(56, 180, 252, 0.03) 40px, rgba(56, 180, 252, 0.03) 41px),
+    repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(56, 180, 252, 0.03) 40px, rgba(56, 180, 252, 0.03) 41px);
+}
+/* 扫描线动画 */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(0, 229, 255, 0.02) 50%,
+    transparent 100%
+  );
+  height: 200%;
+  width: 100%;
+  animation: scanline 8s linear infinite;
+}
+@keyframes scanline {
+  0% { transform: translateY(-50%); }
+  100% { transform: translateY(0%); }
+}
+
+a { color: var(--cyan); text-decoration: none; }
+a:hover { text-shadow: 0 0 12px var(--cyan-glow); }
+
+/* ---- 滚动条 ---- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--cyan), var(--blue)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, var(--cyan), var(--purple)); }
+
+/* ---- 通用玻璃卡片 ---- */
+.glass-card {
+  background: var(--grad-panel);
+  border: 1px solid var(--line-bright);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+/* 卡片顶部霓虹线 */
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 20px; right: 20px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity: 0.6;
+}
+/* 角落装饰 */
+.glass-card::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 60px; height: 60px;
+  border-top: 2px solid var(--cyan);
+  border-right: 2px solid var(--cyan);
+  border-radius: 0 16px 0 0;
+  opacity: 0.35;
+}
+
+/* ---- 科技感数字字体 ---- */
+.num-font {
+  font-family: var(--font-display), var(--font-mono);
+  letter-spacing: 1px;
+}
+
+/* ---- 霓虹文字效果 ---- */
+.text-glow {
+  text-shadow: 0 0 10px var(--cyan-glow), 0 0 30px rgba(0, 229, 255, 0.15);
+}
+
+/* ---- 脉冲动画（用于 LED / 在线状态）---- */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--good), 0 0 12px rgba(52, 211, 153, 0.3); }
+  50%      { opacity: 0.7; box-shadow: 0 0 8px var(--good), 0 0 24px rgba(52, 211, 153, 0.5); }
+}
+.led-pulse { animation: pulse-glow 2s ease-in-out infinite; }
+
+/* ---- 数据流动画（KPI 数字滚动感））---- */
+@keyframes data-flow-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.flow-in { animation: data-flow-in 0.5s ease-out both; }
+
+/* ---- 板块标签 pill ---- */
+.board-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+.board-pill.talent  { color: var(--cyan);   border-color: rgba(0, 229, 255, 0.35); background: rgba(0, 229, 255, 0.08); }
+.board-pill.geo     { color: var(--green);   border-color: rgba(34, 211, 238, 0.35); background: rgba(34, 211, 238, 0.08); }
+.board-pill.industry{ color: var(--gold);   border-color: rgba(251, 191, 36, 0.35); background: rgba(251, 191, 36, 0.08); }
+.board-pill.time    { color: var(--purple);  border-color: rgba(168, 85, 247, 0.35); background: rgba(168, 85, 247, 0.08); }
+.board-pill.text    { color: var(--magenta); border-color: rgba(244, 114, 182, 0.35); background: rgba(244, 114, 182, 0.08); }

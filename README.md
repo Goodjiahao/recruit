@@ -1,21 +1,22 @@
-# 招聘就业大数据分析平台 · 后端服务（recruit）
+# 2025 招聘就业大数据分析平台（recruit）
 
-> 本仓库是「2025 招聘就业大数据分析平台」的**后端服务**与**交付物集成工程**，
-> 负责从 MySQL 读取各成员经 Spark/Hive 分析落库的 ADS 结果表，通过 RESTful 接口为前端 Vue + ECharts 大屏提供标准化数据。
+> 本仓库是「2025 招聘就业大数据分析平台」的**全栈交付工程**：
+> 包含大数据链路的末端数据服务层（Spring Boot）、Vue3 + ECharts 可视化大屏，以及基于大模型的 AI 问答模块。
+> 数据底座为智联招聘 2025 年公开招聘数据集（**95,484 条岗位、321 个城市**）。
 
 ---
 
-## 一、项目目标
+## 一、项目简介
 
-| 目标 | 说明 |
+| 维度 | 说明 |
 |---|---|
-| **数据服务化** | 连接本机 MySQL `bigdata` 库，读取已由 Spark 分析落库的 18 张 ADS 结果表，对外提供查询接口。 |
-| **配置驱动** | 18 个指标共用一套通用接口，仅靠 `t_metric_meta` 配置表驱动；新增指标**零新增业务代码**，只需插一行配置。 |
-| **前后端分离** | 后端只做数据接口，前端（Vue3 + ECharts）负责可视化展示，二者通过 JSON 接口契约解耦。 |
-| **集成契约统一** | 以 MySQL ADS 结果表作为「分析层 ↔ 展示层」唯一对接口，靠 `ads_<板块>_<指标>` 表名前缀天然隔离 6 个成员的成果。 |
-| **（预留）AI 问答** | 预留 `/api/ai/chat` 接口与前端空面板，视工作量决定是否接入大模型，实现自然语言问答互动。 |
+| **数据规模** | 智联招聘 2025 年数据，95,484 条岗位、覆盖 321 个城市；19 个原始字段清洗为 16 个分析字段。 |
+| **计算链路** | `HDFS CSV → Hive DWD 清洗 → Spark 聚合分析 → MySQL ADS 结果表`（上游大数据平台，已独立于本工程）。 |
+| **本工程职责** | ① 读取 MySQL `bigdata` 库中各成员的 ADS 结果表，通过 RESTful 接口为前端提供标准化数据；② Vue3 + ECharts 大屏可视化；③ AI 自然语言问答（DeepSeek）。 |
+| **集成契约** | 以 MySQL ADS 结果表（`ads_<板块>_<指标>`）作为「分析层 ↔ 展示层」唯一对接口，靠表名前缀天然隔离各成员成果。 |
+| **配置驱动** | 18 个指标共用一套通用接口，由代码内 `MetricRegistry` 注册表驱动；新增指标零新增业务代码，只需在注册表追加一条。 |
 
-**一句话定位**：上游是大数据平台（HDFS → Hive DWD → Spark 聚合 → MySQL ADS），本工程是这条链路的**末端数据服务层**。
+**一句话定位**：上游大数据平台算出结果落库，本工程是这条链路的**末端数据服务 + 前端展示 + AI 交互层**。
 
 ---
 
@@ -24,12 +25,13 @@
 | 层 | 技术 | 版本 / 说明 |
 |---|---|---|
 | 后端框架 | Spring Boot | **4.1.0** |
-| 语言 | Java | **21**（`pom.xml` 中 `java.version=21`，需本机安装 JDK 21） |
-| 构建 | Maven | 提供 `mvnw` / `mvnw.cmd`（无需全局安装 Maven） |
-| 数据访问 | **JdbcTemplate** | 因 Spring Boot 4 Initializr 中 MyBatis 暂不可选，改用 JdbcTemplate，功能等价 |
-| 数据源 | MySQL | `bigdata` 库（root / 123456） |
-| 前端（规划） | Vue3 SFC + Vite + ECharts + axios | 独立 `frontend/` 工程（当前为空，原型见 `demo/`） |
-| 开发工具 | IntelliJ IDEA | 工程的 `.idea/` 已生成 |
+| 语言 | Java | **21**（需本机安装 JDK 21） |
+| 构建 | Maven Wrapper | 提供 `mvnw` / `mvnw.cmd`，免全局装 Maven |
+| 数据访问 | **JdbcTemplate** | Spring Boot 4 Initializr 中 MyBatis 暂不可选，改用 JdbcTemplate（功能等价） |
+| 数据源 | MySQL | `bigdata` 库（root / 123456，localhost:3306） |
+| 前端 | Vue3 SFC + Vite + ECharts + axios | `frontend/` 工程，深色科技风大屏 |
+| AI 模型 | **DeepSeek**（`deepseek-v4-pro`） | 通过官方 OpenAI 兼容接口接入，后端用 JDK 21 `HttpClient` 直连 |
+| 开发工具 | IntelliJ IDEA | `.idea/` 已生成（已被 `.gitignore` 忽略） |
 
 ---
 
@@ -42,83 +44,89 @@
                                                         │ 只读查询
                                                         ▼
   前端 Vue3 + ECharts 大屏  ◄──  JSON  ──  Spring Boot 后端（本工程 recruit）
-   demo/ 深色原型              接口        GET /api/{board}/{metric}
-                                        （配置驱动，JdbcTemplate 读 ADS 表）
+   通用 MetricChart / 省级地图 / AI 浮窗      GET /api/{board}/{metric}
+                                            POST /api/ai/chat（DeepSeek）
 ```
 
-- **本工程只读取 ADS 表，不写、不重算**，保证「计算与展示分离」的架构原则。
-- 用户可控输入仅路径中的 `board` / `metric`，二者只用于查 `t_metric_meta`，真正进入 SQL 的是 meta 中预置的表名/列名（内部配置），**不存在 SQL 注入面**。
+- **后端只读取 ADS 表，不写、不重算**，保证「计算与展示分离」的架构原则。
+- 用户可控输入仅路径中的 `board` / `metric`，二者只用于查 `MetricRegistry`，真正进入 SQL 的是 meta 中预置的表名/列名（内部配置），**不存在 SQL 注入面**。
+- AI 模块调用 DeepSeek 的 key/model/URL 写死在 `AiController.java`（按需求不隐藏）。
 
 ---
 
-## 四、项目结构
+## 四、目录结构
 
 ```
 recruit/
 ├── pom.xml                          # Maven 构建（Spring Boot 4.1.0 + Java 21）
 ├── mvnw / mvnw.cmd                  # Maven Wrapper，免装 Maven 直接构建
 ├── README.md                        # 本文件
-├── .idea/                           # IDEA 工程配置（自动生成）
+├── .gitignore                       # 已忽略 target / node_modules / frontend/dist 等
+├── demo/                            # 前端静态原型（深色大屏演示，仅参考）
 ├── doc/
-│   └── 目标文档.md                   # 持续性目标/进度文档（目标、决策、里程碑、风险）
-├── demo/                            # 前端原型（深色大屏静态演示，仅参考用）
-│   ├── index.html                   # 大屏入口
-│   ├── app.js                       # ECharts 图表配置（柱状/饼/热力/地图…）
-│   ├── mock-data.js                 # 模拟数据（接口联调前的占位数据）
-│   ├── styles.css                   # 深色主题样式
-│   ├── lib/                         # ECharts 等前端库
-│   └── assets/                      # 静态资源
-├── frontend/                        # 【待建】前端工程（Vue3 + Vite + ECharts）
-├── sql/                             # 各成员交付的 ADS 结果表 SQL（集成来源）
+│   └── 目标文档.md                   # 持续性目标 / 进度 / 里程碑 / 风险
+├── frontend/                        # 前端工程（Vue3 + Vite + ECharts）
+│   ├── src/
+│   │   ├── App.vue                  # 根组件，挂载 Dashboard + ChatWidget
+│   │   ├── main.js
+│   │   ├── api/metric.js            # axios 封装（baseURL=/api，超时 90s）
+│   │   ├── views/Dashboard.vue      # 大屏总布局（统一网格，地图 2×2）
+│   │   └── components/
+│   │       ├── MetricChart.vue      # 通用图表（柱/饼/线/热力/词云，配置驱动）
+│   │       ├── ChinaMap.vue         # 中国地图（省级岗位数，本地写死视角）
+│   │       └── ChatWidget.vue       # 右下角 AI 对话浮窗（可拖拽，ESC 关闭）
+│   ├── public/geo/                  # 本地固化地理资源【必须随仓库上传】
+│   │   ├── china-cities.json        # 城市级边界（备用）
+│   │   ├── china-provinces.json     # 34 个省级行政区边界（地图主用）
+│   │   └── province_jobs.json       # 省级岗位数聚合（写死）
+│   ├── vite.config.js               # /api 代理到 8080；构建配置
+│   └── package.json
+├── sql/                             # 数据脚本与成员交付
 │   ├── member1.sql ~ member5.sql    # 成员 1~5 交付的建表 + 数据
-│   ├── member6.sql                  # 成员 6 原始合并宽表（不符合「三张表」契约）
-│   ├── member6/                     # 成员 6 自行补发的拆分（仅 7 城，不完整）
-│   │   ├── 1.sql / 2.sql / 3.sql
-│   └── member6_split.sql            # ★标准化拆分：ads_geo_demand / ads_geo_edu / ads_geo_exp（21 城完整，推荐采用）
+│   ├── member6.sql                  # 成员 6 原始合并宽表（不符合契约，旧）
+│   ├── member6_new.sql              # ★地域板准：ads_city_demand / ads_city_education / ads_city_experience
+│   ├── member6_split.sql            # 早期标准化拆分（21 城，已弃用）
+│   ├── ads_geo_demand_fixed.sql     # geo/demand 指标修正 SQL
+│   ├── ads_city_salary_full.sql     # 全量城市薪资结果表
+│   ├── generate_ads_geo_demand.py   # 由 CSV 重算 ads_geo_demand（321 城全量）
+│   ├── generate_ads_city_salary.py  # 由 CSV 重算 ads_city_salary（过滤脏数据）
+│   ├── load_member6_new.py          # 幂等加载 member6_new.sql
+│   ├── build_local_geojson.py       # 下载固化城市边界 → china-cities.json
+│   ├── build_local_province_geojson.py  # 下载固化省级边界 → china-provinces.json
+│   ├── build_province_jobs.py       # 城市岗位数聚合到省级 → province_jobs.json
+│   ├── build_ai_context.py          # 查库抽取平台真实数据 → ai_context.txt
+│   ├── ai_context.txt               # 写死进 AI 系统提示词的真实统计数据
+│   └── explore_csv.py               # CSV 字段探查辅助脚本
 └── src/
-    ├── main/
-    │   ├── java/com/cau/recruit/
-    │   │   └── RecruitApplication.java        # 【已生成】Spring Boot 启动类
-    │   └── resources/
-    │       └── application.properties         # 【已生成】应用配置（待补数据源）
-    └── test/java/com/cau/recruit/
-        └── RecruitApplicationTests.java       # 【已生成】启动测试
-```
-
-### 后端代码结构（规划 / 待补齐）
-
-> 以下为按「配置驱动」设计、**尚未写入**的包结构，`RecruitApplication` 已存在：
-
-```
-src/main/java/com/cau/recruit/
-├── RecruitApplication.java         # 启动类（已生成）
-├── common/
-│   └── Result.java                 # 统一响应信封 {code, msg, data}
-├── entity/
-│   └── MetricMeta.java             # t_metric_meta 配置表映射
-├── repository/
-│   └── MetricRepository.java       # JdbcTemplate 通用查询（读 meta → 动态拼 SQL → 查 ADS 表）
-└── controller/
-    ├── MetricController.java        # GET /api/{board}/{metric}
-    └── AiController.java            # /api/ai/chat（预留，暂不接模型）
+    └── main/
+        ├── java/com/cau/recruit/
+        │   ├── RecruitApplication.java        # Spring Boot 启动类
+        │   ├── common/Result.java             # 统一响应信封 {code, msg, data}
+        │   ├── config/
+        │   │   ├── MetricRegistry.java        # 18 指标注册表（配置驱动核心）
+        │   │   └── CorsConfig.java            # 跨域（允许 Vite 5173）
+        │   ├── controller/
+        │   │   ├── MetricController.java      # GET /api/metrics + GET /api/{board}/{metric}
+        │   │   └── AiController.java          # POST /api/ai/chat（DeepSeek，纯 JDK 实现）
+        │   └── resources/application.properties  # 数据源等配置
+        └── test/java/com/cau/recruit/
+            └── RecruitApplicationTests.java
 ```
 
 ---
 
 ## 五、数据库约定
 
-- **库名**：`bigdata`（MySQL，host 待定：node1 本机或 Windows 本机导入库）。
-- **结果表命名**：`ads_<板块>_<指标>`，例如 `ads_talent_salary`、`ads_geo_demand`。靠板块前缀（talent / geo / region / industry / time / text）隔离 6 个成员成果。
-- **配置表**：`t_metric_meta` —— 每个指标一行，含板块、指标代号、结果表名、维度列、指标列、图表类型、排序等，是通用接口的「驱动源」。
-- **每张 ADS 表必须含 `update_time` 列**，作为集成契约的一部分。
-- **连接方式**（待填 `application.properties`）：
+- **库名**：`bigdata`（MySQL，localhost:3306，本机数据库）。
+- **结果表命名**：`ads_<板块>_<指标>`，如 `ads_talent_salary`、`ads_geo_demand`。靠板块前缀（talent / geo / industry / time / text）隔离各成员成果。
+- **指标注册表（驱动源）**：交付的 SQL 中不含 `t_metric_meta` 表，故「配置驱动」由代码内 `MetricRegistry.java` 实现——每个指标一行（板块 / 指标 / 标题 / 表名 / 图表类型 / 字段映射 / 排序）。新建/调整指标只改这一处，无需新增 Controller。
+- **连接方式**（`application.properties`）：
   ```
-  jdbc:mysql://<host>:3306/bigdata?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+  jdbc:mysql://localhost:3306/bigdata?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true
   user=root  password=123456
   ```
 
-> ⚠️ 组员 SQL 注意点：成员 6 原 `member6.sql` 将地域板块三指标塞进一张宽表 `ads_city_analysis`，不符合契约；
-> 已生成 `member6_split.sql` 按标准拆分为 `ads_geo_demand` / `ads_geo_edu` / `ads_geo_exp` 三张长表（21 城完整、补 `update_time`），**集成时以 `member6_split.sql` 为准**。
+> ⚠️ **成员 6 数据以 `member6_new.sql` 为准**：原 `member6.sql` 将地域板块三指标塞进一张宽表，不符合契约；`member6_new.sql` 已按标准拆分为 `ads_city_demand` / `ads_city_education` / `ads_city_experience` 三张标准长表（全量城市）。早期 `member6_split.sql`（21 城）已弃用。
 
 ---
 
@@ -136,49 +144,119 @@ GET /api/{board}/{metric}
     GET /api/geo/demand         → 城市需求排名
 ```
 
-- 后端依据 `{board}` + `{metric}` 查 `t_metric_meta`，取出结果表名/列，动态拼 SELECT 返回 `List<Map>`。
-- **AI 问答（预留）**：`POST /api/ai/chat`，当前仅占位，按工作量决定是否接入大模型。
+- 后端依据 `{board}` + `{metric}` 查 `MetricRegistry`，取出结果表名/字段映射，动态拼 `SELECT *` 返回 `List<Map>`。
+- `limit` 参数：`limit > 0` 时截断返回条数；`limit = 0` 或不传返回全量（如地图省级全量）。
+
+**AI 问答接口**
+```
+POST /api/ai/chat
+请求体：{ "message": "北京平均薪资多少？", "history": [ { "role":"user", "content":"..." }, { "role":"assistant", "content":"..." } ] }
+响应体：{ "code": 0, "msg": "success", "data": { "reply": "..." } }
+
+GET /api/ai/status   →  { "enabled": true, "model": "deepseek-v4-pro" }
+```
 
 ---
 
-## 七、当前进度与待办
+## 七、AI 问答模块（DeepSeek）
 
-| 状态 | 事项 |
-|---|---|
-| ✅ 已完成 | 工程骨架（pom、启动类、测试类、`.idea`） |
-| ✅ 已完成 | 组员 SQL 收集（member1~6） |
-| ⏳ 待补齐 | `pom.xml` 加入 `spring-boot-starter-jdbc` 依赖 |
-| ⏳ 待补齐 | `application.properties` 配置数据源 |
-| ⏳ 待补齐 | 业务代码：Result / MetricMeta / MetricRepository / MetricController / AiController（预留） |
-| ⏳ 待补齐 | 前端 `frontend/` 工程（深色大屏 + 通用组件 + 地图注册） |
-| ⏳ 阻塞 | 等全员 SQL 到齐后统一落库，确认真实列名/类型 |
-| ⏳ 阻塞 | 确认后端连接的 MySQL 主机（node1 还是 Windows 本机） |
+AI 模块已**正式接入 DeepSeek 大模型**，基于平台真实招聘数据做自然语言问答。
 
-> 进度详情见 [`doc/目标文档.md`](doc/目标文档.md)。
+### 接入方式
+- **后端**：`AiController.java` 使用 JDK 21 自带的 `java.net.http.HttpClient` 调用 DeepSeek 官方 OpenAI 兼容接口。
+- **模型**：`deepseek-v4-pro`（⚠️ **大小写敏感**，DeepSeek 官方只认全小写，写成 `deepseek-V4-pro` 会被拒）。
+- **配置写死在代码中**（按需求不隐藏，便于评审直接查看）：
+  ```java
+  private static final String MIMO_URL     = "https://api.deepseek.com/v1/chat/completions";
+  private static final String MIMO_API_KEY = "sk-2fae95422b7040b09c1141a29488ec86";
+  private static final String MIMO_MODEL   = "deepseek-v4-pro";
+  ```
+- **系统提示词写死平台真实数据**：`SYSTEM_PROMPT` 内嵌了学历分布、经验分布、薪资、地域 TOP、行业、月度趋势、技能词云、福利、热门企业/职位等统计（数据来自 `sql/ai_context.txt`，由 `build_ai_context.py` 从 `bigdata` 库抽取生成），并约束模型只能依据真实数据作答、不编造。
+- **纯 JDK 实现，无外部 JSON 库依赖**：因 `pom.xml` 使用 `spring-boot-starter-webmvc`（Boot4 轻量 starter），不含 Jackson databind，且本机 Maven 无法下载依赖；故 `AiController` 用手写 `jsonEscape()` + `extractContent()` 做 JSON 序列化与响应解析（提取 `choices[0].message.content`），零外部依赖。
+
+### 前端浮窗
+- `frontend/src/components/ChatWidget.vue`：右下角圆形霓虹悬浮按钮，点击展开玻璃拟态对话面板。
+- 支持**拖拽移动**（拖标题栏，限制在视口内）。
+- 关闭方式：**按 `ESC` 键关闭**（面板右上角常驻「ESC 关闭」提示，输入框 placeholder 亦注明）。
+- 多轮对话：前端维护 `history` 传给后端，实现上下文记忆。
+- 请求超时 90s（推理模型响应较慢）。
+
+### ⚠️ 注意事项
+- AI 接口**需要联网**访问 `api.deepseek.com`；离线环境下 `/api/ai/chat` 会返回调用失败提示，不影响其余大屏功能。
+- API Key 已**明文写死在代码中**，上传仓库即公开；正式部署前请确认该 Key 的额度与有效期，或改为环境变量配置。
 
 ---
 
-## 八、快速开始（后端）
+## 八、前端可视化说明
 
+- **风格**：深色科技风大屏，玻璃拟态 + 霓虹描边，与整体主题统一。
+- **布局**：统一 CSS Grid 网格，除地图外组件等长宽，地图组件长宽均为其他组件的 2 倍（2×2）。
+- **通用图表 `MetricChart.vue`**：配置驱动，覆盖柱状 / 饼图 / 环形 / 折线 / 热力图 / 词云等；根据后端返回的 `chartType` 自动渲染。
+- **热力图（学历 × 经验 → 薪资）**：纵轴学历从低到高排列（MBA 在最高位），横轴「经验不限」置于最左；色阶已提亮，无近黑深色。
+- **中国地图（省级岗位数，写死视角）`ChinaMap.vue`**：
+  - 只读本地 `public/geo/china-provinces.json`（34 个省级行政区边界，含台湾省/港/澳）+ `public/geo/province_jobs.json`（省级岗位数聚合），**不依赖外网、不依赖后端 geo 接口**，稳定可复现。
+  - 全 34 个省级行政区均渲染，**无岗位省份也显示**。
+  - `visualMap.min = 50`：岗位 **< 50 与 = 0 同色**，统一落入最低色。
+  - **台湾省金色描边 + 发光阴影 + 常驻金色标注「★ 台湾省」**，重点显示。
+  - 数据底座：由 `ads_city_demand` 的 321 城经城市→省 adcode 映射聚合，覆盖 99.2% 岗位（台湾=0、澳门=0、香港=26，北京居首）。
+
+---
+
+## 九、快速开始
+
+### 0. 准备数据（一次性）
+将各成员 SQL 在**本机 MySQL `bigdata` 库**执行建表并灌数（地域板块以 `member6_new.sql` 为准）：
+```sql
+CREATE DATABASE IF NOT EXISTS bigdata CHARACTER SET utf8mb4;
+USE bigdata;
+SOURCE E:/实训/结项项目/recruit/sql/member1.sql;
+-- … member2 ~ member5、member6_new.sql
+-- 如需刷新 geo 全量数据，执行 ads_geo_demand_fixed.sql
+```
+
+### 1. 启动后端
 ```bash
-# 1. 确保本机已安装 JDK 21
+# 确保本机已安装 JDK 21
 java -version
 
-# 2. 在工程根目录用 Maven Wrapper 启动（无需全局装 Maven）
+# 工程根目录，用 Maven Wrapper 启动（无需全局装 Maven）
 ./mvnw spring-boot:run          # Linux / macOS (Git Bash)
 # 或
 mvnw.cmd spring-boot:run        # Windows
-
-# 3. 接口自测
-curl http://localhost:8080/api/talent/salary
+```
+启动后自测：
+```bash
+curl http://localhost:8080/api/metrics                 # 指标清单
+curl http://localhost:8080/api/talent/salary           # 单指标数据
+curl -X POST http://localhost:8080/api/ai/chat \
+     -H "Content-Type: application/json" \
+     -d '{"message":"北京平均薪资多少？","history":[]}'  # AI 问答
 ```
 
-> 当前骨架尚未接入数据源与业务代码，直接启动只会跑空壳；待第七节的待补齐项完成后方可联调。
+### 2. 启动前端
+```bash
+cd frontend
+npm install
+npm run dev            # 开发模式，默认 http://localhost:5173
+# 或构建静态产物
+npm run build          # 输出到 frontend/dist，可用任意静态服务器托管
+```
+浏览器打开 5173 端口即可看到大屏（Vite 已配置 `/api` 代理到后端 8080，无需额外跨域处理）。
+右下角 AI 浮窗：点击展开，输入问题对话，**按 `ESC` 关闭**。
 
 ---
 
-## 九、相关文档
+## 十、相关文档与上传须知
 
-- [`doc/目标文档.md`](doc/目标文档.md) —— 持续性目标 / 进度 / 里程碑 / 风险跟踪
+- 目标 / 进度跟踪：[`doc/目标文档.md`](doc/目标文档.md)
 - 上游分析规范：`E:\实训\结项项目\标准结果表与接口组件模板.md`（18 组 ADS schema + 接口组件模板）
 - 数据质量基线：`E:\实训\结项项目\团队代码规范与质量把控手册.md`
+
+**Git 上传注意**：
+1. `.gitignore` 已忽略 `target/`、`frontend/node_modules/`、`frontend/dist/`、`*.iml` 等；**但 `frontend/public/geo/*.json` 是地图运行时依赖的本地固化资源，必须随仓库上传，请勿加入忽略**。
+2. AI 的 API Key 明文写在 `AiController.java` 中，上传即公开，请确认可接受后再推送到公开仓库。
+3. 成员 6 数据以 `member6_new.sql` 为准，`member6_split.sql` 与原始 `member6.sql` 已弃用，可不纳入或仅作存档。
+
+---
+
+> 文档维护：本 README 反映当前可运行交付状态（前端已完成、AI 已接入 DeepSeek）。如发现与代码不符之处，以代码为准并同步更新此处。
