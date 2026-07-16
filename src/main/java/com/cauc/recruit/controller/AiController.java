@@ -24,7 +24,10 @@ import java.nio.charset.StandardCharsets;
 public class AiController {
 
     private static final String MIMO_URL = "https://api.deepseek.com/v1/chat/completions";
-    private static final String MIMO_API_KEY = "sk-2fae95422b7040b09c1141a29488ec86";
+    // 注意：推送公开仓库前已将明文 Key 移除，改为从环境变量读取（占位符兜底）。
+    // 本地运行请设置环境变量 DEEPSEEK_API_KEY，或在下方双引号内填入你的真实 Key。
+    private static final String MIMO_API_KEY =
+            System.getenv().getOrDefault("DEEPSEEK_API_KEY", "YOUR_DEEPSEEK_API_KEY");
     private static final String MIMO_MODEL = "deepseek-v4-pro";
 
     private static final String SYSTEM_PROMPT = """

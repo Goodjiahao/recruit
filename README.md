@@ -165,10 +165,10 @@ AI 模块已**正式接入 DeepSeek 大模型**，基于平台真实招聘数据
 ### 接入方式
 - **后端**：`AiController.java` 使用 JDK 21 自带的 `java.net.http.HttpClient` 调用 DeepSeek 官方 OpenAI 兼容接口。
 - **模型**：`deepseek-v4-pro`（⚠️ **大小写敏感**，DeepSeek 官方只认全小写，写成 `deepseek-V4-pro` 会被拒）。
-- **配置写死在代码中**（按需求不隐藏，便于评审直接查看）：
+- **配置方式**：`MIMO_API_KEY` 通过环境变量 `DEEPSEEK_API_KEY` 注入（仓库内为占位符 `YOUR_DEEPSEEK_API_KEY`，本地运行请设置该环境变量或填入真实 Key）：
   ```java
   private static final String MIMO_URL     = "https://api.deepseek.com/v1/chat/completions";
-  private static final String MIMO_API_KEY = "sk-2fae95422b7040b09c1141a29488ec86";
+  private static final String MIMO_API_KEY = System.getenv().getOrDefault("DEEPSEEK_API_KEY", "YOUR_DEEPSEEK_API_KEY");
   private static final String MIMO_MODEL   = "deepseek-v4-pro";
   ```
 - **系统提示词写死平台真实数据**：`SYSTEM_PROMPT` 内嵌了学历分布、经验分布、薪资、地域 TOP、行业、月度趋势、技能词云、福利、热门企业/职位等统计（数据来自 `sql/ai_context.txt`，由 `build_ai_context.py` 从 `bigdata` 库抽取生成），并约束模型只能依据真实数据作答、不编造。

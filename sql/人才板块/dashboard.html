@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>人才板块数据可视化（成员二）</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5f7fa; color: #1f2d3d; padding: 24px; }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+  h1 { text-align: center; font-size: 22px; margin-bottom: 6px; }
+  .sub { text-align: center; color: #8492a6; font-size: 13px; margin-bottom: 22px; }
+  .card { background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.06); padding: 16px 18px 8px; margin-bottom: 22px; }
+  .card h2 { font-size: 16px; margin-bottom: 4px; border-left: 4px solid #409eff; padding-left: 8px; }
+  .card .desc { font-size: 12px; color: #8492a6; margin-bottom: 8px; }
+  .chart { width: 100%; height: 440px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>招聘就业大数据分析平台 · 人才板块可视化</h1>
+  <div class="sub">成员二 · 指标 B / G / J · 数据源：MySQL ADS 层结果表</div>
+
+  <div class="card">
+    <h2>① 学历 × 经验 → 平均薪资（指标 B）</h2>
+    <div class="desc">热力图：纵轴学历、横轴经验，颜色越暖代表平均月薪越高（色阶上限截至 25k 以提升可读性，悬浮显示真实值）。</div>
+    <div id="heat" class="chart"></div>
+  </div>
+
+  <div class="card">
+    <h2>② 经验要求分布（指标 G）</h2>
+    <div class="desc">环形图：各经验档位的招聘岗位数量占比。</div>
+    <div id="exp" class="chart"></div>
+  </div>
+
+  <div class="card">
+    <h2>③ 整体薪资结构（指标 J）</h2>
+    <div class="desc">柱状图：按薪资区间统计岗位数量分布。</div>
+    <div id="sal" class="chart"></div>
+  </div>
+</div>
+
+<script>
+// ---------- 真实 ADS 数据（来自 member2/result/*.sql） ----------
+const eduCats = ['初中及以下','高中','中专/中技','大专','本科','硕士','博士','MBA/EMBA','EMBA','学历不限'];
+const expCats = ['无经验','1年以下','1-3年','3-5年','5-10年','10年以上','经验不限'];
+
+const bData = [
+  ['学历不限','3-5年',15929.07,430],['学历不限','1年以下',9706.62,117],['学历不限','10年以上',11918.92,37],
+  ['学历不限','无经验',7975.11,231],['学历不限','5-10年',11931.81,66],['学历不限','1-3年',9227.54,1158],['学历不限','经验不限',9195.97,2501],
+  ['中专/中技','5-10年',5833.33,3],['中专/中技','1年以下',7000,2],['中专/中技','无经验',6892.15,81],
+  ['中专/中技','1-3年',6487.58,161],['中专/中技','经验不限',7657.78,225],['中专/中技','3-5年',7446.43,56],
+  ['高中','3-5年',7285.71,14],['高中','1-3年',6942.22,225],['高中','10年以上',17000,1],['高中','1年以下',8537.47,18],
+  ['高中','5-10年',41700,5],['高中','经验不限',8075.34,150],['高中','无经验',8166.67,18],
+  ['硕士','无经验',2442.96,699],['硕士','经验不限',9194.38,923],['硕士','3-5年',16671.59,1049],
+  ['硕士','5-10年',23131.03,435],['硕士','1年以下',7850,60],['硕士','10年以上',51118.64,59],['硕士','1-3年',12903.44,1032],
+  ['MBA/EMBA','经验不限',4000,1],
+  ['本科','1-3年',9841.73,17928],['本科','无经验',3249.84,2629],['本科','10年以上',22957.49,894],
+  ['本科','3-5年',12777.85,15144],['本科','5-10年',16172.68,6883],['本科','经验不限',8728.87,13832],['本科','1年以下',7034.77,798],
+  ['EMBA','经验不限',4500,1],['EMBA','3-5年',11500,13],
+  ['大专','10年以上',13822.76,134],['大专','5-10年',9613.8,1697],['大专','经验不限',6998.48,5034],
+  ['大专','1年以下',6187.84,424],['大专','无经验',3773.84,387],['大专','1-3年',6565.31,12238],['大专','3-5年',7384,6343],
+  ['初中及以下','1年以下',8000,1],['初中及以下','1-3年',7250,2],['初中及以下','经验不限',11100,5],
+  ['博士','1-3年',12499.88,4],['博士','经验不限',35000,1],['博士','5-10年',42500,6]
+];
+const gData = [
+  {name:'1-3年',value:32748},{name:'3-5年',value:23049},{name:'经验不限',value:22673},
+  {name:'5-10年',value:9095},{name:'无经验',value:4045},{name:'1年以下',value:1420},{name:'10年以上',value:1125}
+];
+const jCats = ['3k以下','3k-5k','5k-8k','8k-12k','12k-20k','20k-30k','30k以上'];
+const jData = [3582,11488,32660,23224,16302,4471,2428];
+
+// ---------- ① 热力图 ----------
+const heat = echarts.init(document.getElementById('heat'));
+const heatData = bData.map(r=>[expCats.indexOf(r[1]), eduCats.indexOf(r[0]), r[2]]);
+heat.setOption({
+  tooltip:{ formatter:p=>`${eduCats[p.value[1]]} · ${expCats[p.value[0]]}<br/>平均月薪：¥${p.value[2].toFixed(0)}<br/>岗位数：${bData.find(r=>r[0]===eduCats[p.value[1]]&&r[1]===expCats[p.value[0]])[3]}` },
+  grid:{left:90,right:30,top:20,bottom:70},
+  xAxis:{ type:'category', data:expCats, splitArea:{show:true}, axisLabel:{interval:0} },
+  yAxis:{ type:'category', data:eduCats, splitArea:{show:true} },
+  visualMap:{ min:2000, max:25000, calculable:true, orient:'horizontal', left:'center', bottom:10,
+    inRange:{color:['#e0f3f8','#abd9e9','#fee090','#fdae61','#f46d43','#d73027']}, text:['高','低'] },
+  series:[{ type:'heatmap', data:heatData, label:{show:false},
+    emphasis:{itemStyle:{shadowBlur:10,shadowColor:'rgba(0,0,0,.4)'}} }]
+});
+
+// ---------- ② 环形图 ----------
+const exp = echarts.init(document.getElementById('exp'));
+exp.setOption({
+  tooltip:{ trigger:'item', formatter:'{b}: {c} 个 ({d}%)' },
+  legend:{ bottom:0, type:'scroll' },
+  series:[{ type:'pie', radius:['38%','65%'], center:['50%','46%'],
+    data:gData, label:{formatter:'{b}\n{d}%'},
+    color:['#5470c6','#91cc75','#fac858','#ee6666','#73c0de','#3ba272','#fc8452'] }]
+});
+
+// ---------- ③ 柱状图 ----------
+const sal = echarts.init(document.getElementById('sal'));
+sal.setOption({
+  tooltip:{ trigger:'axis', formatter:'{b}: {c} 个岗位' },
+  grid:{left:60,right:30,top:30,bottom:50},
+  xAxis:{ type:'category', data:jCats, axisLabel:{interval:0} },
+  yAxis:{ type:'value', name:'岗位数' },
+  series:[{ type:'bar', data:jData, barWidth:'55%',
+    itemStyle:{ color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#83bff6'},{offset:1,color:'#188df0'}]) },
+    label:{show:true, position:'top'} }]
+});
+</script>
+</body>
+</html>
